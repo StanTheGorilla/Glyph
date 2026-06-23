@@ -4,8 +4,9 @@
   //   History transcripts
   //   Setup   rarely-opened: download/manage models + runtimes, behavior, words, files
   //
-  // Home *picks*; Setup *manages*. The model you talk through is a dropdown of
-  // what's installed; downloading/removing/importing all lives once in Setup.
+  // Home is for everyday use: pick the model you talk through — or download a new
+  // one right here. Settings is for the rest: removing/importing models, runtimes,
+  // behavior, words, and files.
   //
   // All invoke() calls, the engine-event state machine, bind targets, the
   // cfg.* shape, the hotkey-capture logic, and the save/apply flows are
@@ -27,6 +28,7 @@
   import BackendItem from '$lib/components/BackendItem.svelte';
   import ModelSection from '$lib/components/ModelSection.svelte';
   import ModelCustom from '$lib/components/ModelCustom.svelte';
+  import TranscriptionPicker from '$lib/components/TranscriptionPicker.svelte';
   import { open } from '@tauri-apps/plugin-dialog';
 
   type Tab = 'home' | 'history' | 'settings';
@@ -114,25 +116,6 @@
   // Nemotron models are arbitrary .gguf files (no fixed presets), so the picker
   // lists whatever the user has downloaded into the asr folder.
   const nemotronInstalled = $derived(transcriptionInstalled.filter((m: any) => m.name.toLowerCase().endsWith('.gguf')));
-
-  // ── Home model dropdown ──
-  // One flat list of *installed* models (Whisper sizes on disk + downloaded
-  // Nemotron GGUFs). The value encodes kind so onchange routes to the right
-  // activate call. Picking = switching the live engine; downloading lives in Setup.
-  const homeModels = $derived([
-    ...WHISPER_MODELS.filter((m) => installedWhisperIds.includes(m.id)).map((m) => ({
-      value: `w:${m.id}`,
-      label: `Whisper ${m.label}`,
-    })),
-    ...nemotronInstalled.map((m: any) => ({ value: `n:${m.path}`, label: m.name.replace(/\.gguf$/i, '') })),
-  ]);
-  const activeModelValue = $derived(
-    activeWhisper ? `w:${activeWhisper}` : activeNemotronPath ? `n:${activeNemotronPath}` : '',
-  );
-  function onHomeModelChange(value: string) {
-    if (value.startsWith('w:')) selectWhisper(value.slice(2));
-    else if (value.startsWith('n:')) selectNemotron(value.slice(2));
-  }
 
   // Home cleanup-model dropdown: switch among installed cleanup models live.
   const prettyModel = (name: string) => name.replace(/\.(gguf|bin)$/i, '').replace(/^ggml-/, '');
@@ -268,6 +251,7 @@
       await refreshInstalled();
     } catch (e) { status = '' + e; statusKind = 'err'; }
   }
+  function downloadWhisper(id: string) { installBackend('whisper-model', id); }
   function installNemotron() { startCustom('transcription', NEMOTRON_URL); }
 
   async function applyMode() {
@@ -449,17 +433,22 @@
       <!-- Dictation — the controls you change between sessions -->
       <section class="sec">
         <h2 class="sec-title">Dictation</h2>
-        <p class="sec-sub">What you talk through, and how you trigger it. Changes apply instantly.</p>
+        <p class="sec-sub">What you talk through, and how you trigger it. Pick a model — or download one right here. Changes apply instantly.</p>
+        <TranscriptionPicker
+          whisperModels={WHISPER_MODELS}
+          installedIds={installedWhisperIds}
+          {activeWhisper}
+          nemotronModels={nemotronInstalled}
+          activeNemotron={activeNemotronPath}
+          progress={progressMap}
+          onSelectWhisper={selectWhisper}
+          onDownloadWhisper={downloadWhisper}
+          onSelectNemotron={selectNemotron}
+          onInstallNemotron={installNemotron}
+          onPause={pauseDownload}
+          onCancel={cancelBackend}
+        />
         <div class="grid two">
-          <Field label="Transcription model">
-            {#if homeModels.length}
-              <select value={activeModelValue} onchange={(e) => onHomeModelChange(e.currentTarget.value)}>
-                {#each homeModels as m}<option value={m.value}>{m.label}</option>{/each}
-              </select>
-            {:else}
-              <button type="button" class="nudge" onclick={() => (tab = 'settings')}>None yet — get one →</button>
-            {/if}
-          </Field>
           <Field label="Microphone">
             <select bind:value={cfg.audio.device}>
               <option value="">System default</option>
@@ -469,11 +458,6 @@
               {/if}
             </select>
           </Field>
-        </div>
-        <div class="grid two">
-          <Field label="Hotkey">
-            <HotkeyCapture bind:combo={cfg.hotkey.combo} />
-          </Field>
           <Field label="Mode" hint="applies instantly">
             <select bind:value={cfg.hotkey.mode} onchange={applyMode}>
               <option value="hold">Hold to talk</option>
@@ -481,6 +465,9 @@
             </select>
           </Field>
         </div>
+        <Field label="Hotkey">
+          <HotkeyCapture bind:combo={cfg.hotkey.combo} />
+        </Field>
       </section>
 
       <!-- Cleanup -->

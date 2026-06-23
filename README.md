@@ -19,6 +19,18 @@ Think of it as a local-first alternative to cloud dictation apps — for people 
 - 📓 **Dictionary & snippets** — teach Glyph your proper nouns so it always spells them right, and expand spoken cues into full phrases.
 - 🪶 **Quiet and out of the way** — lives in the system tray as a tiny status orb that never steals focus from your games or fullscreen apps.
 
+## Screenshots
+
+<div align="center">
+  <img src="docs/screenshots/home.jpg" width="820" alt="Glyph Home — transcription model, microphone, hotkey, cleanup, and dictionary" />
+  <br/>
+  <sub><em>Home — your everyday controls: model, mic, hotkey, cleanup toggle + model, and dictionary.</em></sub>
+  <br/><br/>
+  <img src="docs/screenshots/settings.jpg" width="820" alt="Glyph Settings — collapsible sections for models, behavior, snippets, and files" />
+  <br/>
+  <sub><em>Settings — calm, collapsible sections: Transcription, Cleanup, Behavior, Snippets, Files.</em></sub>
+</div>
+
 ## How it works
 
 Glyph is a [Tauri](https://tauri.app) desktop app (Rust + Svelte) wrapped around a small dictation engine:

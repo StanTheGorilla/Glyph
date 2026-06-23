@@ -42,7 +42,6 @@
 </script>
 
 <div class="picker">
-  <span class="grp">Whisper</span>
   <div class="cards">
     {#each whisperModels as m (m.id)}
       {@const p = progress[`whisper-model::${m.id}`]}
@@ -84,58 +83,46 @@
         </div>
       {/if}
     {/each}
-  </div>
 
-  <span class="grp">Nemotron <span class="grp-dim">· streaming</span></span>
-  {#if nemotronModels.length}
-    <div class="cards nemo">
+    <!-- Nemotron — inline, next to the Whisper sizes -->
+    {#if nemotronModels.length}
       {#each nemotronModels as nm (nm.path)}
         {@const active = activeNemotron === nm.path}
-        <button type="button" class="card sel wide" class:active onclick={() => !active && onSelectNemotron(nm.path)} aria-pressed={active}>
+        <button type="button" class="card sel" class:active title={prettyNemo(nm.name)} onclick={() => !active && onSelectNemotron(nm.path)} aria-pressed={active}>
           <span class="c-label">{prettyNemo(nm.name)}</span>
           <span class="c-note">{active ? 'Active' : 'Select'}</span>
         </button>
       {/each}
-    </div>
-  {:else}
-    <div class="card off wide">
-      <span class="c-label">Nemotron 0.6B</span>
-      {#if nemoProg?.phase === 'download'}
-        <span class="c-note">{pct(nemoProg)}%</span>
-        <div class="bar"><div class="fill" style="width:{pct(nemoProg)}%"></div></div>
-        <div class="c-act">
-          <button type="button" class="xs ghost" onclick={() => onPause('custom-model', 'transcription')}>Pause</button>
-          <button type="button" class="xs ghost" onclick={() => onCancel('custom-model', 'transcription')}>Cancel</button>
-        </div>
-      {:else if nemoProg?.phase === 'paused'}
-        <span class="c-note">Paused · {pct(nemoProg)}%</span>
-        <div class="bar paused"><div class="fill" style="width:{pct(nemoProg)}%"></div></div>
-        <div class="c-act">
-          <button type="button" class="xs solid" onclick={onInstallNemotron}>Resume</button>
-          <button type="button" class="xs ghost" onclick={() => onCancel('custom-model', 'transcription')}>Cancel</button>
-        </div>
-      {:else}
-        <span class="c-note">streaming · q8_0 · ~940 MB{nemoProg?.phase === 'error' ? ' · failed' : ''}</span>
-        <button type="button" class="xs download" onclick={onInstallNemotron}>Install</button>
-      {/if}
-    </div>
-  {/if}
+    {:else}
+      <div class="card off">
+        <span class="c-label">Nemotron</span>
+        {#if nemoProg?.phase === 'download'}
+          <span class="c-note">{pct(nemoProg)}%</span>
+          <div class="bar"><div class="fill" style="width:{pct(nemoProg)}%"></div></div>
+          <div class="c-act">
+            <button type="button" class="xs ghost" onclick={() => onPause('custom-model', 'transcription')}>Pause</button>
+            <button type="button" class="xs ghost" onclick={() => onCancel('custom-model', 'transcription')}>Cancel</button>
+          </div>
+        {:else if nemoProg?.phase === 'paused'}
+          <span class="c-note">Paused · {pct(nemoProg)}%</span>
+          <div class="bar paused"><div class="fill" style="width:{pct(nemoProg)}%"></div></div>
+          <div class="c-act">
+            <button type="button" class="xs solid" onclick={onInstallNemotron}>Resume</button>
+            <button type="button" class="xs ghost" onclick={() => onCancel('custom-model', 'transcription')}>Cancel</button>
+          </div>
+        {:else}
+          <span class="c-note">streaming · 0.6B{nemoProg?.phase === 'error' ? ' · failed' : ''}</span>
+          <button type="button" class="xs download" onclick={onInstallNemotron}>Install</button>
+        {/if}
+      </div>
+    {/if}
+  </div>
 </div>
 
 <style>
   .picker { display: flex; flex-direction: column; gap: 9px; }
-  .grp {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--faint-2);
-    margin-top: 4px;
-  }
-  .grp-dim { color: var(--faint-2); font-weight: 500; text-transform: none; letter-spacing: 0; }
 
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; }
-  .cards.nemo { grid-template-columns: 1fr; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
 
   /* A model card: selectable (button), downloadable (off), or busy. */
   .card {
@@ -152,8 +139,16 @@
     color: var(--dim);
     min-width: 0;
   }
-  .card.wide { gap: 4px; }
-  .c-label { font-size: 13px; font-weight: 600; letter-spacing: -0.005em; color: var(--text); }
+  .c-label {
+    width: 100%;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .c-note { font-size: 11px; color: var(--faint); }
   .c-note.err { color: var(--rec); }
 

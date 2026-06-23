@@ -1,0 +1,9 @@
+[package]
+name = "glyph-asr-sidecar"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+libloading = "0.8"
+serde_json.workspace = true

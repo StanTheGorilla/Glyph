@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Glyph brand mark.
+       Coffee-dark surface carries the mark: speech (waveform ticks) resolving
+       into a single vertical stem — a glyph of voice becoming text.
+       Palette: sage ticks, warm off-white stem, coffee surface. -->
+  <defs>
+    <linearGradient id="surface" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2f2a24"/>
+      <stop offset="100%" stop-color="#1c1a17"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Surface (warm coffee-dark, generous radius) -->
+  <rect x="0" y="0" width="1024" height="1024" rx="228" fill="url(#surface)"/>
+  <!-- hairline edge for definition on dark backgrounds -->
+  <rect x="0" y="0" width="1024" height="1024" rx="228" fill="none"
+        stroke="#ece4d4" stroke-opacity="0.08" stroke-width="3"/>
+
+  <!-- Waveform ticks (sage), asymmetric like real speech -->
+  <g stroke="#92b87b" stroke-linecap="round" opacity="0.92">
+    <line x1="300" y1="452" x2="300" y2="572" stroke-width="58"/>
+    <line x1="420" y1="368" x2="420" y2="656" stroke-width="58"/>
+    <line x1="660" y1="392" x2="660" y2="632" stroke-width="58"/>
+    <line x1="744" y1="470" x2="744" y2="554" stroke-width="58"/>
+  </g>
+
+  <!-- The resolving stem: warm off-white, the character the voice lands as -->
+  <line x1="540" y1="288" x2="540" y2="736" stroke="#ece4d4" stroke-width="64" stroke-linecap="round"/>
+</svg>

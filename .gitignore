@@ -1,0 +1,39 @@
+# ── Rust ──
+/target/
+**/target/
+
+# ── Node / SvelteKit ──
+node_modules/
+/glyph-app/build/
+/glyph-app/.svelte-kit/
+
+# ── Local state & dev scratch (machine-specific or private) ──
+/phase0/
+/graphify-out/
+/.claude/
+.vscode/
+glyph.toml
+glyph.txt
+build-out.log
+PHASE0_FINDINGS.md
+CLAUDE.md
+
+# ── Personal dictation history ──
+glyph_history.db
+glyph_history.db-shm
+glyph_history.db-wal
+*.db
+*.db-shm
+*.db-wal
+
+# ── Models & native binaries (downloaded at runtime, never committed) ──
+*.gguf
+*.bin
+*.exe
+*.dll
+*.so
+*.dylib
+
+# ── OS noise ──
+Thumbs.db
+.DS_Store

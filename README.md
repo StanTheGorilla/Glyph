@@ -1,0 +1,74 @@
+<div align="center">
+  <img src="glyph-app/src-tauri/icons/128x128@2x.png" width="96" alt="Glyph logo" />
+  <h1>Glyph</h1>
+  <p><strong>Talk, and it types.</strong><br/>A private, on-device voice keyboard for Windows.</p>
+</div>
+
+---
+
+Glyph lets you dictate into **any** app — your editor, your browser, chat, email, anything with a text cursor. Hold a hotkey, say what you mean, let go, and your words appear as text right where you're typing. Everything runs **locally on your machine**: your voice never leaves your computer, there's no account, and there's no subscription.
+
+Think of it as a local-first alternative to cloud dictation apps — for people who'd rather not stream their voice to someone else's servers.
+
+## Why Glyph?
+
+- 🔒 **Private by default** — speech recognition and text cleanup run entirely on your PC. Nothing is uploaded, ever.
+- ⌨️ **Works everywhere** — types into whatever app is focused (clipboard paste or simulated keystrokes). No per-app plugins.
+- 🧠 **Optional AI cleanup** — a small local LLM strips the "um"s, fixes grammar and punctuation, and tightens phrasing. Or turn it off for a raw transcript.
+- 🎛️ **Your models, your hardware** — choose Whisper (small → large) or NVIDIA **Nemotron**, run on GPU (Vulkan/CUDA) or CPU, and download models right inside the app.
+- 📓 **Dictionary & snippets** — teach Glyph your proper nouns so it always spells them right, and expand spoken cues into full phrases.
+- 🪶 **Quiet and out of the way** — lives in the system tray as a tiny status orb that never steals focus from your games or fullscreen apps.
+
+## How it works
+
+Glyph is a [Tauri](https://tauri.app) desktop app (Rust + Svelte) wrapped around a small dictation engine:
+
+1. A **global hotkey** starts/stops recording — hold-to-talk or click-to-toggle.
+2. Audio is captured and streamed to a local **ASR engine**: a Whisper sidecar, or the Nemotron / parakeet streaming runtime.
+3. *(Optional)* the raw transcript is passed through a local **llama.cpp** server running a small instruct model that rewrites it into clean written text, guided by your personal dictionary.
+4. The result is **injected at your cursor** — clipboard paste or per-character Unicode typing.
+
+Models and runtimes are managed for you and download from inside the app (**Settings → Transcription / Cleanup**).
+
+## Requirements
+
+- Windows 10/11 (x64)
+- A microphone
+- Disk space for the models you download (~0.5–4 GB each). A GPU (Vulkan or CUDA) is recommended, but CPU works.
+
+## Build from source
+
+You'll need [Rust](https://rustup.rs), [Node.js](https://nodejs.org), and the [Tauri prerequisites](https://tauri.app/start/prerequisites/) for Windows.
+
+```bash
+git clone https://github.com/StanTheGorilla/Glyph
+cd Glyph/glyph-app
+npm install
+
+# Development (hot reload):
+npm run tauri dev
+
+# Release build — produces src-tauri/target/release/glyph-app.exe:
+npm run tauri build -- --no-bundle
+```
+
+## Using Glyph
+
+1. Launch Glyph — it sits in your system tray with a status orb.
+2. On first run, open **Settings** and download a **transcription model** (and a **cleanup model** too, if you want polished output).
+3. On **Home**, pick your model and microphone, and set your hotkey and mode.
+4. Hold your hotkey, speak, and release — your text lands in the focused app.
+
+The status orb tells you what's happening: **grey** = idle · **red** = listening · **orange** = transcribing.
+
+## Privacy
+
+Glyph is local-first. Your audio, transcripts, and history stay on your device. The optional cleanup step is a local llama.cpp server — no audio or text is sent over the network for transcription or cleanup.
+
+## Tech stack
+
+Tauri 2 · Svelte 5 · Rust · whisper.cpp · Nemotron / parakeet · llama.cpp
+
+## License
+
+[MIT](LICENSE) © StanTheGorilla

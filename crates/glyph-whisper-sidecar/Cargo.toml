@@ -1,0 +1,17 @@
+[package]
+name = "glyph-whisper-sidecar"
+version = "0.1.0"
+edition = "2021"
+description = "Resident Whisper ASR engine process (whisper.cpp/whisper-rs)."
+
+# Default backend is Vulkan (AMD / cross-vendor). For NVIDIA, build with:
+#   cargo build -p glyph-whisper-sidecar --release --no-default-features --features cuda
+[features]
+default = ["vulkan"]
+vulkan = ["whisper-rs/vulkan"]
+cuda = ["whisper-rs/cuda"]
+
+[dependencies]
+whisper-rs = "0.16"
+hound = "3.5"
+serde_json = "1"

@@ -8,16 +8,17 @@
 
 Glyph lets you dictate into **any** app — your editor, your browser, chat, email, anything with a text cursor. Hold a hotkey, say what you mean, let go, and your words appear as text right where you're typing. Everything runs **locally on your machine**: your voice never leaves your computer, there's no account, and there's no subscription.
 
-Think of it as a local-first alternative to cloud dictation apps — for people who'd rather not stream their voice to someone else's servers.
+Think of it as a **free, local, open-source alternative to [Wispr Flow](https://wisprflow.ai)** — the same idea (hold a key, talk, get clean text in any app), but everything runs on your own machine, with no account, no subscription, and no usage limits.
 
 ## Why Glyph?
 
-- 🔒 **Private by default** — speech recognition and text cleanup run entirely on your PC. Nothing is uploaded, ever.
-- ⌨️ **Works everywhere** — types into whatever app is focused (clipboard paste or simulated keystrokes). No per-app plugins.
-- 🧠 **Optional AI cleanup** — a small local LLM strips the "um"s, fixes grammar and punctuation, and tightens phrasing. Or turn it off for a raw transcript.
-- 🎛️ **Your models, your hardware** — choose Whisper (small → large) or NVIDIA **Nemotron**, run on GPU (Vulkan/CUDA) or CPU, and download models right inside the app.
-- 📓 **Dictionary & snippets** — teach Glyph your proper nouns so it always spells them right, and expand spoken cues into full phrases.
-- 🪶 **Quiet and out of the way** — lives in the system tray as a tiny status orb that never steals focus from your games or fullscreen apps.
+- **Free and open-source** — no account, no subscription, no usage limits.
+- **Private by default** — speech recognition and text cleanup run entirely on your PC. Nothing is uploaded, ever.
+- **Works everywhere** — types into whatever app is focused (clipboard paste or simulated keystrokes). No per-app plugins.
+- **Optional AI cleanup** — a small local LLM strips the "um"s, fixes grammar and punctuation, and tightens phrasing. Or turn it off for a raw transcript.
+- **Your models, your hardware** — choose Whisper (small to large) or NVIDIA Nemotron, run on GPU (Vulkan/CUDA) or CPU, and download models right inside the app.
+- **Dictionary & snippets** — teach Glyph your proper nouns so it always spells them right, and expand spoken cues into full phrases.
+- **Quiet and out of the way** — lives in the system tray as a tiny status orb that never steals focus from your games or fullscreen apps.
 
 ## Screenshots
 
@@ -85,6 +86,14 @@ The status orb tells you what's happening: **grey** = idle · **red** = listenin
 ## Privacy
 
 Glyph is local-first. Your audio, transcripts, and history stay on your device. The optional cleanup step is a local llama.cpp server — no audio or text is sent over the network for transcription or cleanup.
+
+## Tiling window managers
+
+The status orb is a click-through tool window with app-window styles stripped, so most tiling managers leave it alone. If yours still grabs it, add a float/ignore rule for the window titled **`Glyph HUD`**. For [komorebi](https://github.com/LGUG2Z/komorebi), a title rule keeps it out of the layout, e.g.:
+
+```
+komorebic float-rule title "Glyph HUD"
+```
 
 ## Tech stack
 

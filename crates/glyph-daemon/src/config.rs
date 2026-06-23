@@ -127,7 +127,7 @@ impl Default for Config {
                 device: "auto".into(),
                 lang: "en".into(),
                 whisper: Whisper {
-                    binary: PathBuf::from(r"F:\Glyph\target\debug\glyph-whisper-sidecar.exe"),
+                    binary: sidecar_path("glyph-whisper-sidecar"),
                     model: "turbo".into(),
                 },
             },
@@ -191,19 +191,20 @@ impl Default for Inject {
     }
 }
 
-fn default_sidecar() -> PathBuf {
-    // Next to this executable: target/debug/glyph-asr-sidecar.exe
+/// Resolve a sidecar executable that ships next to this app's exe — which is
+/// where the installer places the bundled sidecars (Tauri `externalBin`).
+fn sidecar_path(stem: &str) -> PathBuf {
+    let file = if cfg!(windows) { format!("{stem}.exe") } else { stem.to_string() };
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
-            let p = dir.join(if cfg!(windows) {
-                "glyph-asr-sidecar.exe"
-            } else {
-                "glyph-asr-sidecar"
-            });
-            return p;
+            return dir.join(&file);
         }
     }
-    PathBuf::from("glyph-asr-sidecar.exe")
+    PathBuf::from(file)
+}
+
+fn default_sidecar() -> PathBuf {
+    sidecar_path("glyph-asr-sidecar")
 }
 
 impl Config {

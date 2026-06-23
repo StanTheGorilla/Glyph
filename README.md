@@ -48,6 +48,15 @@ Models and runtimes are managed for you and download from inside the app (**Sett
 - A microphone
 - Disk space for the models you download (~0.5–4 GB each). A GPU (Vulkan or CUDA) is recommended, but CPU works.
 
+## Download
+
+Grab the latest **Windows installer** from the [Releases](https://github.com/StanTheGorilla/Glyph/releases/latest) page:
+
+- **`Glyph_<version>_x64-setup.exe`** — recommended (NSIS installer)
+- `Glyph_<version>_x64_en-US.msi` — MSI alternative
+
+Run it, launch Glyph, then open **Settings** and download a transcription model (and a cleanup model, if you want polish) to get going.
+
 ## Build from source
 
 You'll need [Rust](https://rustup.rs), [Node.js](https://nodejs.org), and the [Tauri prerequisites](https://tauri.app/start/prerequisites/) for Windows.

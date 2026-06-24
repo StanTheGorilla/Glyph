@@ -8,6 +8,7 @@
 pub mod asr;
 pub mod cleaner;
 pub mod history;
+pub mod proc_guard;
 pub mod text;
 
 pub use asr::{

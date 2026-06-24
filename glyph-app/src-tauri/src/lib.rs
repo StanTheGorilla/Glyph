@@ -840,9 +840,9 @@ pub fn run() {
         ])
         .setup(|app| {
             // Ensure the llama-server + ASR sidecars die with Glyph (even on a
-            // Task Manager kill) instead of lingering in the background.
-            #[cfg(windows)]
-            install_kill_on_close_job();
+            // Task Manager kill) instead of lingering in the background. Arms the
+            // kill-job before any child spawns; each child is also added to it.
+            glyph_core::proc_guard::init();
             setup_tray(app.handle())?;
             keep_main_in_tray(app.handle());
             show_hud_overlay(app.handle());
@@ -1063,36 +1063,6 @@ fn apply_overlay_styles(window: &tauri::WebviewWindow) {
 #[cfg(not(windows))]
 fn apply_overlay_styles(_window: &tauri::WebviewWindow) {}
 
-/// Put this process into a Windows job object that terminates all child processes
-/// when the job's last handle closes — i.e. when Glyph exits or is force-killed.
-/// This stops the llama-server and ASR sidecars from lingering in the background
-/// after the app is closed (including when killed via Task Manager). No-op if the
-/// job can't be created/assigned.
-#[cfg(windows)]
-fn install_kill_on_close_job() {
-    use windows::core::PCWSTR;
-    use windows::Win32::System::JobObjects::{
-        AssignProcessToJobObject, CreateJobObjectW, SetInformationJobObject,
-        JobObjectExtendedLimitInformation, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
-        JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
-    };
-    use windows::Win32::System::Threading::GetCurrentProcess;
-    unsafe {
-        let Ok(job) = CreateJobObjectW(None, PCWSTR::null()) else { return };
-        let mut info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
-        info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
-        let _ = SetInformationJobObject(
-            job,
-            JobObjectExtendedLimitInformation,
-            &info as *const _ as *const core::ffi::c_void,
-            std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
-        );
-        // Leave the handle open for the whole process lifetime (HANDLE has no Drop,
-        // so simply not closing it keeps KILL_ON_JOB_CLOSE armed until we die).
-        let _ = AssignProcessToJobObject(job, GetCurrentProcess());
-    }
-}
-
 fn setup_tray(handle: &tauri::AppHandle) -> tauri::Result<()> {
     let settings = MenuItemBuilder::with_id("settings", "Open Settings").build(handle)?;
     let quit = MenuItemBuilder::with_id("quit", "Quit Glyph").build(handle)?;
@@ -1106,7 +1076,15 @@ fn setup_tray(handle: &tauri::AppHandle) -> tauri::Result<()> {
                     let _ = w.set_focus();
                 }
             }
-            "quit" => app.exit(0),
+            "quit" => {
+                // Drop the engine now so its sidecars (llama-server, ASR) are
+                // killed before we leave: app.exit() calls process::exit, which
+                // skips destructors, so we can't rely on Engine's Drop here.
+                if let Some(st) = app.try_state::<AppState>() {
+                    *st._engine.lock().unwrap() = None;
+                }
+                app.exit(0);
+            }
             _ => {}
         });
     }

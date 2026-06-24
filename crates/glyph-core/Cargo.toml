@@ -11,5 +11,14 @@ anyhow.workspace = true
 ureq = { version = "2", features = ["json"] }
 rusqlite = { version = "0.32", features = ["bundled"] }
 
+[target.'cfg(windows)'.dependencies.windows]
+version = "0.58"
+features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_JobObjects",
+    "Win32_System_Threading",
+]
+
 [dev-dependencies]
 hound = "3"

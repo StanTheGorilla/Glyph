@@ -119,6 +119,9 @@ impl AsrEngine for SidecarEngine {
             .stderr(Stdio::inherit())
             .spawn()
             .context("spawn sidecar (stream mode)")?;
+        // Tie the sidecar to the kill-job so it dies with us (Drop alone misses a
+        // Task Manager kill / Quit-via-process::exit).
+        crate::proc_guard::guard(&child);
 
         let stdin = child.stdin.take().ok_or_else(|| anyhow!("no child stdin"))?;
         let stdout = child.stdout.take().ok_or_else(|| anyhow!("no child stdout"))?;

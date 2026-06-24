@@ -36,6 +36,9 @@ impl LlamaServer {
             cmd.creation_flags(0x0800_0000);
         }
         let child = cmd.spawn().context("spawn llama-server")?;
+        // Tie llama-server to the kill-job so it dies with us even on a Task Manager
+        // kill or a Quit that calls process::exit (Drop wouldn't run then).
+        glyph_core::proc_guard::guard(&child);
 
         let base = format!("http://127.0.0.1:{port}");
         wait_healthy(&base, Duration::from_secs(90))?;

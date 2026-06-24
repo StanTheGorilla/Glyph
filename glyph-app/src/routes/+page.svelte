@@ -29,7 +29,9 @@
   import ModelSection from '$lib/components/ModelSection.svelte';
   import ModelCustom from '$lib/components/ModelCustom.svelte';
   import TranscriptionPicker from '$lib/components/TranscriptionPicker.svelte';
-  import { open } from '@tauri-apps/plugin-dialog';
+  import { open, ask } from '@tauri-apps/plugin-dialog';
+  import { check } from '@tauri-apps/plugin-updater';
+  import { relaunch } from '@tauri-apps/plugin-process';
 
   type Tab = 'home' | 'history' | 'settings';
   type WhisperModel = 'small' | 'medium' | 'large' | 'turbo';
@@ -194,7 +196,29 @@
     // Everything loaded — capture the baseline and arm auto-save.
     lastSnapshot = snapshot();
     ready = true;
+
+    // Check for a new release in the background (non-blocking).
+    checkForUpdate();
   });
+
+  // Auto-update: ask GitHub releases for a newer signed build on launch; if one
+  // exists, offer to install it, then relaunch into the new version.
+  async function checkForUpdate() {
+    try {
+      const update = await check();
+      if (!update) return;
+      const notes = update.body?.trim() ? `\n\n${update.body.trim()}` : '';
+      const yes = await ask(
+        `Glyph ${update.version} is available — you have ${update.currentVersion}.${notes}\n\nDownload and install it now?`,
+        { title: 'Update available', kind: 'info', okLabel: 'Update now', cancelLabel: 'Later' },
+      );
+      if (!yes) return;
+      await update.downloadAndInstall();
+      await relaunch();
+    } catch (e) {
+      console.error('update check failed', e);
+    }
+  }
 
   async function loadConfig() {
     cfg = await invoke('get_config');

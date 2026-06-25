@@ -88,6 +88,8 @@
   let progressMap = $state<Record<string, any>>({});
   let installedModels = $state<any[]>([]);
   let backendsDir = $state('');
+  let transcriptionDir = $state('');
+  let cleanupDir = $state('');
   let backendMsg = $state('');
   let currentModel = $state('');
 
@@ -300,6 +302,8 @@
   async function loadBackends() {
     try {
       backendsDir = await invoke('backends_dir');
+      transcriptionDir = await invoke('transcription_dir');
+      cleanupDir = await invoke('cleanup_dir');
       await refreshModel();
       await refreshStatuses();
       await refreshInstalled();
@@ -412,10 +416,34 @@
     if (typeof dir === 'string') {
       await invoke('set_backends_dir', { path: dir });
       backendsDir = dir;
+      // The per-kind model folders default to subfolders of the base dir, so
+      // re-read them in case they weren't overridden.
+      transcriptionDir = await invoke('transcription_dir');
+      cleanupDir = await invoke('cleanup_dir');
       await refreshStatuses();
     }
   }
   function openFolder() { invoke('reveal_backends_dir').catch(() => {}); }
+  async function changeTranscriptionFolder() {
+    const dir = await open({ directory: true, multiple: false, title: 'Choose transcription model folder' });
+    if (typeof dir === 'string') {
+      await invoke('set_transcription_dir', { path: dir });
+      transcriptionDir = dir;
+      await refreshStatuses();
+      await refreshInstalled();
+    }
+  }
+  function openTranscriptionFolder() { invoke('reveal_transcription_dir').catch(() => {}); }
+  async function changeCleanupFolder() {
+    const dir = await open({ directory: true, multiple: false, title: 'Choose cleanup model folder' });
+    if (typeof dir === 'string') {
+      await invoke('set_cleanup_dir', { path: dir });
+      cleanupDir = dir;
+      await refreshStatuses();
+      await refreshInstalled();
+    }
+  }
+  function openCleanupFolder() { invoke('reveal_cleanup_dir').catch(() => {}); }
 
   $effect(() => { if (tab === 'settings' && catalog.length === 0) loadBackends(); });
 
@@ -762,12 +790,32 @@
         {#if setupOpen.files}
           <div class="setup-body" transition:fade={{ duration: 140 }}>
             <span class="run-h">Download folder</span>
-            <p class="sec-sub">Where backends and models are saved. Pick a drive with room — models are large.</p>
+            <p class="sec-sub">Base folder for engine binaries (and the default for models below). Pick a drive with room — models are large.</p>
             <div class="folder-row">
               <code class="folder">{backendsDir}</code>
               <div class="folder-actions">
                 <button class="ghost" onclick={changeFolder}>Change…</button>
                 <button class="ghost" onclick={openFolder}>Open</button>
+              </div>
+            </div>
+
+            <span class="run-h">Transcription models</span>
+            <p class="sec-sub">Where Whisper / Nemotron speech models download.</p>
+            <div class="folder-row">
+              <code class="folder">{transcriptionDir}</code>
+              <div class="folder-actions">
+                <button class="ghost" onclick={changeTranscriptionFolder}>Change…</button>
+                <button class="ghost" onclick={openTranscriptionFolder}>Open</button>
+              </div>
+            </div>
+
+            <span class="run-h">Cleanup models</span>
+            <p class="sec-sub">Where the cleanup LLM (GGUF) models download.</p>
+            <div class="folder-row">
+              <code class="folder">{cleanupDir}</code>
+              <div class="folder-actions">
+                <button class="ghost" onclick={changeCleanupFolder}>Change…</button>
+                <button class="ghost" onclick={openCleanupFolder}>Open</button>
               </div>
             </div>
             <p class="tip">Install as many builds/models as you like — each downloads independently and they run in parallel.</p>

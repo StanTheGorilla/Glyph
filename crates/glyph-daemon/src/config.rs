@@ -27,6 +27,12 @@ pub struct Paths {
     /// Where the Backends tab downloads binaries/models. Empty = the app's
     /// per-user data dir (resolved by the Tauri layer, which knows that path).
     pub backends_dir: PathBuf,
+    /// Where transcription (ASR) models are saved. Empty = the `asr` subfolder
+    /// of `backends_dir` (resolved by the Tauri layer).
+    pub transcription_dir: PathBuf,
+    /// Where cleanup LLM models are saved. Empty = the `cleanup` subfolder of
+    /// `backends_dir` (resolved by the Tauri layer).
+    pub cleanup_dir: PathBuf,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

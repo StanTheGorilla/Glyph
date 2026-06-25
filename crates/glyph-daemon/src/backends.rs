@@ -77,19 +77,21 @@ impl CatalogItem {
         self.variants.iter().find(|v| v.id == id)
     }
 
-    /// Directory (under `root`) the variant installs into. Zips get their own
-    /// per-variant folder; direct files share the item's subdir.
-    pub fn install_dir(&self, root: &Path, v: &Variant) -> PathBuf {
+    /// Directory the variant installs into, given this item's already-resolved
+    /// directory `dir` (the app layer maps `subdir`/per-kind overrides to it).
+    /// Zips get their own per-variant subfolder; direct files land in `dir`.
+    pub fn install_dir(&self, dir: &Path, v: &Variant) -> PathBuf {
         match v.archive {
-            Archive::Zip => root.join(self.subdir).join(v.id),
-            Archive::File => root.join(self.subdir),
+            Archive::Zip => dir.join(v.id),
+            Archive::File => dir.to_path_buf(),
         }
     }
 
     /// Full path of the primary file — both the config target and the marker
-    /// used to decide whether the variant is installed.
-    pub fn primary_path(&self, root: &Path, v: &Variant) -> PathBuf {
-        self.install_dir(root, v).join(v.primary)
+    /// used to decide whether the variant is installed. `dir` is the item's
+    /// resolved directory (see `install_dir`).
+    pub fn primary_path(&self, dir: &Path, v: &Variant) -> PathBuf {
+        self.install_dir(dir, v).join(v.primary)
     }
 }
 

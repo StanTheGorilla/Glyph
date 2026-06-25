@@ -71,6 +71,13 @@ fn save_config(app: tauri::AppHandle, state: State<AppState>, config: Config) ->
     glyph_daemon::hotkey::parse_spec(&config.hotkey.combo)
         .map_err(|e| format!("invalid hotkey: {e}"))?;
     let old = Config::load_or_create(&config_path()).ok();
+    // Download folders (`paths`) are owned by their own set_* commands, never by
+    // this bulk auto-save — keep the on-disk values so a stale frontend copy
+    // can't revert a folder the user just changed.
+    let mut config = config;
+    if let Some(o) = &old {
+        config.paths = o.paths.clone();
+    }
     let toml = toml::to_string_pretty(&config).map_err(|e| e.to_string())?;
     std::fs::write(config_path(), toml).map_err(|e| e.to_string())?;
     // Mode, snippets and dictionary apply live (no restart).
@@ -161,6 +168,48 @@ fn backends_root(app: &tauri::AppHandle) -> PathBuf {
         .unwrap_or_else(|_| PathBuf::from("backends"))
 }
 
+/// Where transcription (ASR) models download: the user's override if set, else
+/// the `asr` subfolder of the base backends dir.
+fn transcription_models_root(app: &tauri::AppHandle) -> PathBuf {
+    if let Ok(cfg) = Config::load_or_create(&config_path()) {
+        if !cfg.paths.transcription_dir.as_os_str().is_empty() {
+            return cfg.paths.transcription_dir;
+        }
+    }
+    backends_root(app).join("asr")
+}
+
+/// Where cleanup LLM models download: the user's override if set, else the
+/// `cleanup` subfolder of the base backends dir.
+fn cleanup_models_root(app: &tauri::AppHandle) -> PathBuf {
+    if let Ok(cfg) = Config::load_or_create(&config_path()) {
+        if !cfg.paths.cleanup_dir.as_os_str().is_empty() {
+            return cfg.paths.cleanup_dir;
+        }
+    }
+    backends_root(app).join("cleanup")
+}
+
+/// The model directory for a custom-download `kind` ("transcription"/"cleanup").
+fn models_root(app: &tauri::AppHandle, kind: &str) -> PathBuf {
+    if kind == "transcription" {
+        transcription_models_root(app)
+    } else {
+        cleanup_models_root(app)
+    }
+}
+
+/// The directory a catalog item installs into. Transcription/cleanup models honor
+/// their per-kind override dirs; engine binaries live under the base backends
+/// dir's per-item subfolder.
+fn item_root(app: &tauri::AppHandle, item: &CatalogItem) -> PathBuf {
+    match item.subdir {
+        "asr" => transcription_models_root(app),
+        "cleanup" => cleanup_models_root(app),
+        other => backends_root(app).join(other),
+    }
+}
+
 #[tauri::command]
 fn backend_catalog() -> Vec<CatalogItem> {
     glyph_daemon::backends::catalog()
@@ -175,6 +224,32 @@ fn backends_dir(app: tauri::AppHandle) -> String {
 fn set_backends_dir(path: String) -> Result<(), String> {
     let mut cfg = Config::load_or_create(&config_path()).map_err(|e| e.to_string())?;
     cfg.paths.backends_dir = PathBuf::from(path);
+    let toml = toml::to_string_pretty(&cfg).map_err(|e| e.to_string())?;
+    std::fs::write(config_path(), toml).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn transcription_dir(app: tauri::AppHandle) -> String {
+    transcription_models_root(&app).to_string_lossy().into_owned()
+}
+
+#[tauri::command]
+fn set_transcription_dir(path: String) -> Result<(), String> {
+    let mut cfg = Config::load_or_create(&config_path()).map_err(|e| e.to_string())?;
+    cfg.paths.transcription_dir = PathBuf::from(path);
+    let toml = toml::to_string_pretty(&cfg).map_err(|e| e.to_string())?;
+    std::fs::write(config_path(), toml).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn cleanup_dir(app: tauri::AppHandle) -> String {
+    cleanup_models_root(&app).to_string_lossy().into_owned()
+}
+
+#[tauri::command]
+fn set_cleanup_dir(path: String) -> Result<(), String> {
+    let mut cfg = Config::load_or_create(&config_path()).map_err(|e| e.to_string())?;
+    cfg.paths.cleanup_dir = PathBuf::from(path);
     let toml = toml::to_string_pretty(&cfg).map_err(|e| e.to_string())?;
     std::fs::write(config_path(), toml).map_err(|e| e.to_string())
 }
@@ -209,15 +284,15 @@ fn config_target_path(cfg: &Config, target: ConfigTarget) -> Option<PathBuf> {
 /// For each catalog item, which variants are installed and which is active.
 #[tauri::command]
 fn backend_status(app: tauri::AppHandle) -> Vec<ItemStatus> {
-    let root = backends_root(&app);
     let cfg = Config::load_or_create(&config_path()).ok();
     glyph_daemon::backends::catalog()
         .iter()
         .map(|item| {
+            let dir = item_root(&app, item);
             let installed_variants: Vec<String> = item
                 .variants
                 .iter()
-                .filter(|v| item.primary_path(&root, v).exists())
+                .filter(|v| item.primary_path(&dir, v).exists())
                 .map(|v| v.id.to_string())
                 .collect();
             let active_variant = cfg
@@ -226,7 +301,7 @@ fn backend_status(app: tauri::AppHandle) -> Vec<ItemStatus> {
                 .and_then(|field| {
                     item.variants
                         .iter()
-                        .find(|v| item.primary_path(&root, v) == field)
+                        .find(|v| item.primary_path(&dir, v) == field)
                         .map(|v| v.id.to_string())
                 });
             ItemStatus { id: item.id.to_string(), installed_variants, active_variant }
@@ -241,7 +316,7 @@ fn activate_backend(app: tauri::AppHandle, id: String, variant: String) -> Resul
     let catalog = glyph_daemon::backends::catalog();
     let item = catalog.iter().find(|i| i.id == id).ok_or("unknown item")?;
     let var = item.variant(&variant).ok_or("unknown variant")?;
-    let primary = item.primary_path(&backends_root(&app), var);
+    let primary = item.primary_path(&item_root(&app, item), var);
     if !primary.exists() {
         return Err("that build isn't installed".into());
     }
@@ -327,15 +402,14 @@ fn push_active_outside(out: &mut Vec<InstalledModel>, active: &Path, kind: &str)
 /// what's installed (presets *and* custom downloads) and which is active.
 #[tauri::command]
 fn installed_models(app: tauri::AppHandle) -> Vec<InstalledModel> {
-    let root = backends_root(&app);
     let cfg = Config::load_or_create(&config_path()).ok();
     let mut out = Vec::new();
     let cleanup_active = cfg.as_ref().map(|c| c.cleanup.model.clone());
-    scan_models(&root.join("cleanup"), &["gguf"], cleanup_active.as_deref(), "cleanup", &mut out);
+    scan_models(&cleanup_models_root(&app), &["gguf"], cleanup_active.as_deref(), "cleanup", &mut out);
     // active_asr() resolves the model the active engine actually loads (whisper bin
     // or nemotron gguf), so the right transcription file is flagged active.
     let asr_active = cfg.as_ref().map(|c| c.active_asr().1);
-    scan_models(&root.join("asr"), &["bin", "gguf"], asr_active.as_deref(), "transcription", &mut out);
+    scan_models(&transcription_models_root(&app), &["bin", "gguf"], asr_active.as_deref(), "transcription", &mut out);
     // Surface the active model even when it lives outside the managed folder (a
     // local/custom pick), so it doesn't silently vanish from the list.
     if let Some(p) = cleanup_active {
@@ -402,7 +476,12 @@ fn activate_model(app: tauri::AppHandle, path: String, kind: String) -> Result<(
 #[tauri::command]
 fn delete_model(app: tauri::AppHandle, path: String) -> Result<(), String> {
     let p = PathBuf::from(&path);
-    if !p.starts_with(backends_root(&app)) {
+    let managed = [
+        backends_root(&app),
+        transcription_models_root(&app),
+        cleanup_models_root(&app),
+    ];
+    if !managed.iter().any(|r| p.starts_with(r)) {
         return Err("that model isn't in the managed folder".into());
     }
     let ext_ok = p
@@ -422,6 +501,24 @@ fn delete_model(app: tauri::AppHandle, path: String) -> Result<(), String> {
 #[tauri::command]
 fn reveal_backends_dir(app: tauri::AppHandle) -> Result<(), String> {
     let root = backends_root(&app);
+    std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
+    app.opener()
+        .open_path(root.to_string_lossy().into_owned(), None::<&str>)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn reveal_transcription_dir(app: tauri::AppHandle) -> Result<(), String> {
+    let root = transcription_models_root(&app);
+    std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
+    app.opener()
+        .open_path(root.to_string_lossy().into_owned(), None::<&str>)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn reveal_cleanup_dir(app: tauri::AppHandle) -> Result<(), String> {
+    let root = cleanup_models_root(&app);
     std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
     app.opener()
         .open_path(root.to_string_lossy().into_owned(), None::<&str>)
@@ -525,7 +622,7 @@ fn download_backend(
     if var.url.is_empty() {
         return Err("download source for this item isn't configured yet".into());
     }
-    let root = backends_root(&app);
+    let root = item_root(&app, &item);
     let key = dl_key(&id, &variant);
     // The partial file kept across a pause (so a later cancel can remove it).
     let part = match var.archive {
@@ -707,8 +804,7 @@ fn download_custom_model(
     let url = normalize_hf_url(url.trim());
     let filename = model_filename_from_url(&url, &kind)
         .ok_or("that link doesn't point at a model file — use a direct .gguf or .bin link")?;
-    let subdir = if kind == "transcription" { "asr" } else { "cleanup" };
-    let dest = backends_root(&app).join(subdir).join(filename);
+    let dest = models_root(&app, &kind).join(filename);
     let key = dl_key("custom-model", &kind);
     let part = dest.with_extension("part");
 
@@ -824,11 +920,17 @@ pub fn run() {
             backend_catalog,
             backends_dir,
             set_backends_dir,
+            transcription_dir,
+            set_transcription_dir,
+            cleanup_dir,
+            set_cleanup_dir,
             backend_status,
             download_backend,
             cancel_download,
             pause_download,
             reveal_backends_dir,
+            reveal_transcription_dir,
+            reveal_cleanup_dir,
             activate_backend,
             hf_search,
             hf_gguf_files,
